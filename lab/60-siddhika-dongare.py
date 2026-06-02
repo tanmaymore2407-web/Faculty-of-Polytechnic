@@ -28,5 +28,14 @@ def even_odd(n)
      print(divisible_by_3(a))
      print(divisible_by_3(b))
      print(divisible_by_3(c))
+
+#problem4
+ a = [1, 2, 3]
+
+def print_elements(lst):
+    for x in lst:
+        print(x)
+
+print_elements(a)
     
 
