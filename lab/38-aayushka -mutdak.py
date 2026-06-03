@@ -36,3 +36,9 @@ def check(n=list):
          print (x)
          
 check (n)
+#problem4
+l=[1,2,3,4,5,6]
+l.pop(0)
+l.pop(1)
+l.pop(2)
+print (l)
