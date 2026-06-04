@@ -38,4 +38,3 @@ def print_elements(lst):
 
 print_elements(a)
     
-
