@@ -85,3 +85,25 @@ for unum in [5, 20, 10]:
         print(unum, "- Low")
     else:
         print(unum, "- High")
+#problem6 
+def greet():
+    name = input("Enter your name: ")
+    age = int(input("Enter your age: "))
+
+    print("Hi", name + "!", "Next year you will be", age + 1)
+
+greet()
+
+#problem7
+
+def tip_calculator():
+    bill = float(input("Enter bill amount: "))
+    tip_percent = float(input("Enter tip percentage: "))
+
+    tip = bill * tip_percent / 100
+    total = bill + tip
+
+    print(f"Tip: {tip:.2f}")
+    print(f"Total: {total:.2f}")
+
+tip_calculator()
