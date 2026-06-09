@@ -5,3 +5,11 @@ def greet():
     print("Hi",n + "!Next year you will be",a+1)
 greet()
 #problem 2
+num=10
+while True:
+    uinp= int (input("1,2,3,4,5,6,7,8,9,10="))
+    if uinp !=num:
+        print("incorrect")
+    else:
+        print("correct ")
+        
