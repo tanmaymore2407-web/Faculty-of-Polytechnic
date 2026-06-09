@@ -1,0 +1,56 @@
+$ python3 D15_calculator.py
+First number: 8
+Operator (+ - * / %): /
+Second number: 2
+8.0 / 2.0 = 4.0
+
+--- another run ---
+
+$ python3 D15_calculator.py
+First number: 7
+Operator (+ - * / %): *
+Second number: 6
+7.0 * 6.0 = 42.0
+
+--- division by zero is handled, not a crash ---
+
+$ python3 D15_calculator.py
+First number: 7
+Operator (+ - * / %): /
+Second number: 0
+7.0 / 0.0 = Error: cannot divide by zero
+
+--- modulo ---
+
+$ python3 D15_calculator.py
+First number: 17
+Operator (+ - * / %): %
+Second number: 5
+17.0 % 5.0 = 2.0
+
+--- unknown operator ---
+
+$ python3 D15_calculator.py
+First number: 4
+Operator (+ - * / %): ^
+Second number: 2
+Unknown operator: ^
+
+=================================================
+  ★ STRETCH: history list + loop
+=================================================
+
+$ python3 D15_calculator.py
+Operator (+ - * / % | history | q): +
+First number: 3
+Second number: 4
+3.0 + 4.0 = 7.0
+Operator (+ - * / % | history | q): *
+First number: 5
+Second number: 5
+5.0 * 5.0 = 25.0
+Operator (+ - * / % | history | q): history
+3.0 + 4.0 = 7.0
+5.0 * 5.0 = 25.0
+Operator (+ - * / % | history | q): q
+Bye!

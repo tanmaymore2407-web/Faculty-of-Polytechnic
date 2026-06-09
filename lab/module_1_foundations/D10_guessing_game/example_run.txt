@@ -1,0 +1,10 @@
+Guess the number (1-100): 50
+Too high!
+Guess the number (1-100): 25
+Too low!
+Guess the number (1-100): 37
+Too low!
+Guess the number (1-100): 43
+Too high!
+Guess the number (1-100): 42
+Correct! You got it in 5 tries.

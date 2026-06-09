@@ -1,0 +1,15 @@
+$ python3 D13_scope_bughunt.py
+
+--- What the BUGGY starter prints (wrong!) ---
+Items added. Cart total: 15
+With 5% tax: 15.75
+
+# Why it's wrong:
+#   We added 40 + 25 + 15, so the cart total should be 80.
+#   But add_item() OVERWRITES the global `total` each call instead of adding
+#   to it, so `total` ends up as just the LAST price (15). The tax line is
+#   then computed from that wrong 15, so it's wrong too.
+
+--- What it SHOULD print after you fix the scope (using params + return) ---
+Items added. Cart total: 80
+With 5% tax: 84.00

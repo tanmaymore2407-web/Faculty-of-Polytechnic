@@ -1,0 +1,9 @@
+$ python3 D08_find_first_match.py
+5
+4
+3
+2
+1
+Liftoff!
+
+56

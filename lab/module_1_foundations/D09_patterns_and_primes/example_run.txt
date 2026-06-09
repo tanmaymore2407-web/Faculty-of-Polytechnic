@@ -1,0 +1,10 @@
+$ python3 D09_patterns_and_primes.py
+*
+**
+***
+****
+*****
+
+True
+False
+False

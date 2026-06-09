@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Module 1 · Day 14 — Refactor: Spaghetti → Clean</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+<style>
+  /* ─────────────────────────  THEME  ───────────────────────── */
+  :root{
+    --bg:#0A0A0F; --surface:#111122; --card:#15152A;
+    --border:#262640; --border-br:#353556;
+    --text:#E2E8F0; --text-br:#F1F5F9; --muted:#94A3B8; --dim:#64748B; --faint:#475569;
+    --cyan:#00D4FF; --cyan-dim:#0891A8; --yellow:#FFD43B; --green:#34D399; --red:#F87171; --purple:#A78BFA;
+    --mono:'IBM Plex Mono',ui-monospace,Consolas,monospace;
+    --sans:'IBM Plex Sans',system-ui,sans-serif;
+    --disp:'Space Grotesk','IBM Plex Sans',sans-serif;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:#050507; color:var(--text); font-family:var(--sans);
+    overflow:hidden; display:grid; place-items:center;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ─────────────────────────  STAGE  ───────────────────────── */
+  .scaler{ transform-origin:center center; }
+  .stage{
+    width:1280px; height:720px; position:relative;
+    background:var(--bg); overflow:hidden;
+    box-shadow:0 30px 80px rgba(0,0,0,.6); border-radius:10px;
+  }
+  .slide{
+    position:absolute; inset:0; padding:56px 64px 48px;
+    display:flex; flex-direction:column;
+    opacity:0; visibility:hidden; transition:opacity .35s ease;
+  }
+  .slide.active{ opacity:1; visibility:visible; }
+
+  /* staggered entrance */
+  .slide.active .r{ animation:rise .5s cubic-bezier(.2,.7,.2,1) both;
+    animation-delay:calc(var(--d,0) * 55ms); }
+  @keyframes rise{ from{opacity:0; transform:translateY(14px)} to{opacity:1; transform:none} }
+
+  /* ─────────────────────────  PRIMITIVES  ───────────────────────── */
+  .eyebrow{ font-family:var(--mono); font-size:13px; font-weight:600;
+    letter-spacing:.22em; text-transform:uppercase; color:var(--cyan); }
+  .h-title{ font-family:var(--disp); font-weight:700; color:var(--text-br);
+    line-height:1.08; }
+  .lede{ font-size:17px; color:var(--muted); line-height:1.55; max-width:62ch; }
+  .body-text{ font-size:18px; color:var(--text); line-height:1.55; max-width:64ch; }
+
+  .card{ background:var(--card); border:1px solid var(--border); border-radius:10px; }
+  .card.accent{ border-color:var(--cyan); background:rgba(0,212,255,.05); }
+
+  /* code block */
+  .code{ background:#0c0c14; border:1px solid var(--border); border-radius:9px;
+    overflow:hidden; display:flex; flex-direction:column; min-height:0; }
+  .cbar{ display:flex; align-items:center; gap:7px; padding:9px 13px;
+    border-bottom:1px solid var(--border); flex:0 0 auto; }
+  .cd{ width:9px; height:9px; border-radius:50%; background:#5C5C7A; }
+  .cf{ margin-left:8px; font-family:var(--mono); font-size:11.5px; color:var(--dim); }
+  .cpre{ margin:0; padding:14px 16px; overflow:auto; flex:1 1 auto; }
+  .cpre code{ font-family:var(--mono); font-size:15px; line-height:1.62;
+    color:var(--text); white-space:pre; display:block; }
+  /* syntax */
+  .kw{ color:var(--cyan); } .const{ color:var(--purple); }
+  .bif{ color:var(--yellow); } .num{ color:#FFA657; }
+  .str{ color:var(--green); } .com{ color:var(--dim); font-style:italic; }
+  .err{ color:var(--red); font-style:italic; }
+
+  /* ─────────────────────────  HUD  ───────────────────────── */
+  .progress{ position:fixed; top:0; left:0; height:3px; background:var(--cyan);
+    width:0; z-index:50; transition:width .35s ease; box-shadow:0 0 10px var(--cyan); }
+  .hud{ position:fixed; bottom:18px; right:20px; z-index:50;
+    display:flex; align-items:center; gap:14px;
+    font-family:var(--mono); font-size:13px; color:var(--dim);
+    background:rgba(17,17,34,.72); backdrop-filter:blur(8px);
+    border:1px solid var(--border); border-radius:999px; padding:7px 14px;
+    opacity:.5; transition:opacity .25s; }
+  .hud:hover{ opacity:1; }
+  .hud button{ all:unset; cursor:pointer; color:var(--muted); line-height:0;
+    padding:3px 6px; border-radius:6px; transition:color .15s,background .15s;
+    font-size:16px; font-family:var(--mono); }
+  .hud button:hover{ color:var(--cyan); background:rgba(0,212,255,.1); }
+  .hud .count b{ color:var(--cyan); }
+  .hud .sep{ width:1px; height:16px; background:var(--border); }
+  .hint{ position:fixed; bottom:18px; left:20px; z-index:50;
+    font-family:var(--mono); font-size:11px; color:var(--faint);
+    opacity:.7; transition:opacity .6s; }
+  .hint.gone{ opacity:0; }
+  .hint b{ color:var(--dim); }
+
+  /* slide-specific helpers */
+  .day-tag{ position:absolute; top:58px; right:72px; font-family:var(--mono);
+    font-size:14px; color:var(--dim); letter-spacing:.18em; }
+  .footer{ margin-top:auto; }
+  .callout{ border-left:3px solid var(--yellow); background:rgba(255,212,59,.06);
+    padding:14px 18px; border-radius:6px; color:var(--text); font-size:15px;
+    line-height:1.55; }
+  .callout b{ color:var(--yellow); }
+  .pill{ display:inline-block; font-family:var(--mono); font-size:12px;
+    background:rgba(0,212,255,.13); color:var(--cyan); padding:3px 9px;
+    border-radius:999px; letter-spacing:.06em; }
+  .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .grid-3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:18px; }
+  .num-list{ list-style:none; counter-reset:s; padding:0; }
+  .num-list li{ counter-increment:s; padding:10px 0 10px 46px; position:relative;
+    font-size:17px; color:var(--text); line-height:1.55; border-bottom:1px solid var(--border); }
+  .num-list li:last-child{ border-bottom:none; }
+  .num-list li::before{ content:counter(s,decimal-leading-zero);
+    position:absolute; left:0; top:10px; font-family:var(--mono);
+    font-size:14px; color:var(--cyan); font-weight:600; }
+
+  /* ─────────────────────────  PRINT (PDF backup)  ───────────────────────── */
+  @media print{
+    @page{ size:1280px 720px; margin:0; }
+    body{ display:block; overflow:visible; background:#fff; }
+    .scaler{ transform:none !important; }
+    .stage{ box-shadow:none; border-radius:0; }
+    .slide{ position:relative; opacity:1 !important; visibility:visible !important;
+      page-break-after:always; break-after:page; transition:none; }
+    .slide .r{ animation:none !important; }
+    .hud,.hint,.progress{ display:none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="progress" id="progress"></div>
+
+<div class="scaler" id="scaler">
+<div class="stage" id="stage">
+
+  <!-- ═══════ SLIDE 1 · TITLE ═══════ -->
+  <section class="slide active" style="justify-content:center; padding:64px 72px;">
+    <div style="position:absolute;inset:0;
+      background-image:repeating-linear-gradient(transparent 0,transparent 89px,var(--border) 89px,var(--border) 90px);
+      opacity:.6;"></div>
+    <div style="position:relative;">
+      <div class="r eyebrow" style="--d:0; margin-bottom:26px;">&gt;&gt; Module 01 / Day 14 / Lecture</div>
+      <h1 class="r h-title" style="--d:1; font-size:72px; letter-spacing:-1px;">Refactor: Spaghetti &rarr; Clean</h1>
+      <div class="r" style="--d:2; font-family:var(--disp); font-weight:500; font-style:italic;
+        font-size:42px; color:var(--cyan); margin-top:10px;">Day 14 of a 40-day journey</div>
+
+      <div class="r" style="--d:3; margin-top:46px; font-size:18px; color:var(--muted); max-width:60ch; line-height:1.55;">
+        The code already works. Today you make it <em style="color:var(--text);">readable</em> — same output, better shape.
+      </div>
+
+      <div class="r" style="--d:4; display:flex; gap:42px; margin-top:46px; font-size:15px;
+        font-family:var(--sans);">
+        <div><span style="font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.14em;text-transform:uppercase;">Lecture</span>
+          <div style="color:var(--text-br);margin-top:4px;">75 min · 09:00–10:15</div></div>
+        <div><span style="font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.14em;text-transform:uppercase;">Lab</span>
+          <div style="color:var(--text-br);margin-top:4px;">60 min · Clean the Spaghetti</div></div>
+        <div><span style="font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.14em;text-transform:uppercase;">Module</span>
+          <div style="color:var(--cyan);margin-top:4px;">M1 · Python Foundations</div></div>
+      </div>
+    </div>
+    <div class="day-tag">DAY 14 / 40</div>
+  </section>
+
+  <!-- ═══════ SLIDE 2 · AGENDA ═══════ -->
+  <section class="slide">
+    <div class="r eyebrow" style="--d:0;">&gt;&gt; Today's roadmap</div>
+    <h2 class="r h-title" style="--d:1; font-size:44px; margin-top:8px;">A combine day, a different goal</h2>
+
+    <ol class="r num-list" style="--d:2; margin-top:32px; max-width:80ch;">
+      <li>What "spaghetti code" actually is</li>
+      <li>The four smells — repetition, long blocks, unclear names, magic numbers</li>
+      <li>The refactor recipe — extract, name, replace, re-run</li>
+      <li>A before/after worked example</li>
+      <li>Lab — clean the spaghetti without changing its output</li>
+    </ol>
+
+    <div class="r footer" style="--d:3; display:flex; align-items:center; gap:14px;
+      border:1.5px solid var(--cyan); border-radius:10px; padding:14px 20px;
+      background:rgba(0,212,255,.04);">
+      <span class="pill">REFACTOR · 1 HR</span>
+      <span style="font-size:16px;color:var(--text);">No new features today. Same output in, same output out — just cleaner code in between.</span>
+    </div>
+  </section>
+
+  <!-- ═══════ SLIDE 3 · WHAT IS SPAGHETTI ═══════ -->
+  <section class="slide">
+    <div class="r eyebrow" style="--d:0;">&gt;&gt; The hook</div>
+    <h2 class="r h-title" style="--d:1; font-size:40px; margin-top:8px;">"It works… but I'm scared to touch it."</h2>
+    <p class="r body-text" style="--d:2; margin-top:18px;">
+      <em style="color:var(--cyan);font-style:normal;">Spaghetti code</em> is code that runs correctly but is tangled — one long
+      strand where everything is connected to everything, copy-pasted and hard to follow. You can't change one part
+      without fear of breaking another.
+    </p>
+    <div class="r callout" style="--d:3; margin-top:26px; max-width:760px;">
+      <b>Refactoring</b> = changing the <b>shape</b> of code while keeping its <b>behaviour</b> identical.
+      Same output, every time. We improve how it reads, not what it does.
+    </div>
+  </section>
+
+  <!-- ═══════ SLIDE 4 · THE FOUR SMELLS ═══════ -->
+  <section class="slide">
+    <div class="r eyebrow" style="--d:0;">&gt;&gt; 01 / 04 · Diagnosis</div>
+    <h2 class="r h-title" style="--d:1; font-size:42px; margin-top:8px;">Four code smells to sniff out</h2>
+
+    <div class="grid-2" style="margin-top:28px;">
+      <div class="r card" style="--d:2; padding:22px;">
+        <div class="pill">SMELL 1</div>
+        <div style="font-family:var(--disp); font-size:21px; font-weight:600; color:var(--text-br); margin-top:12px;">Repetition</div>
+        <p style="color:var(--muted); margin-top:10px; font-size:15px; line-height:1.55;">The same lines copy-pasted with tiny changes. Fix one bug and you must fix it everywhere.</p>
+      </div>
+      <div class="r card" style="--d:3; padding:22px;">
+        <div class="pill">SMELL 2</div>
+        <div style="font-family:var(--disp); font-size:21px; font-weight:600; color:var(--text-br); margin-top:12px;">Long top-level blocks</div>
+        <p style="color:var(--muted); margin-top:10px; font-size:15px; line-height:1.55;">One giant flat script with no functions. Nothing has a name; nothing can be reused.</p>
+      </div>
+      <div class="r card" style="--d:4; padding:22px;">
+        <div class="pill">SMELL 3</div>
+        <div style="font-family:var(--disp); font-size:21px; font-weight:600; color:var(--text-br); margin-top:12px;">Unclear names</div>
+        <p style="color:var(--muted); margin-top:10px; font-size:15px; line-height:1.55;"><code style="font-family:var(--mono);color:var(--green);">n</code>, <code style="font-family:var(--mono);color:var(--green);">a</code>, <code style="font-family:var(--mono);color:var(--green);">t</code>, <code style="font-family:var(--mono);color:var(--green);">av</code> — you have to decode them. Names should explain themselves.</p>
+      </div>
+      <div class="r card" style="--d:5; padding:22px;">
+        <div class="pill">SMELL 4</div>
+        <div style="font-family:var(--disp); font-size:21px; font-weight:600; color:var(--text-br); margin-top:12px;">Magic numbers</div>
+        <p style="color:var(--muted); margin-top:10px; font-size:15px; line-height:1.55;">Bare numbers like <code style="font-family:var(--mono);color:var(--num,#FFA657);">35</code> or <code style="font-family:var(--mono);color:var(--num,#FFA657);">75</code> with no name. What do they mean? Give them one.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════ SLIDE 5 · SMELL IN THE WILD ═══════ -->
+  <section class="slide">
+    <div class="r eyebrow" style="--d:0;">&gt;&gt; What spaghetti looks like</div>
+    <h2 class="r h-title" style="--d:1; font-size:36px; margin-top:8px;">All four smells in one block</h2>
+
+    <div class="r code" style="--d:2; margin-top:22px; flex:1; min-height:0;">
+      <div class="cbar"><span class="cd"></span><span class="cd"></span><span class="cd"></span><span class="cf">report_spaghetti.py</span></div>
+<pre class="cpre"><code><span class="com"># student 1</span>
+<span class="kw">n</span> = <span class="str">"Aarav"</span>; <span class="kw">a</span> = <span class="num">40</span>; <span class="kw">b</span> = <span class="num">55</span>; <span class="kw">c</span> = <span class="num">70</span>   <span class="com"># unclear names</span>
+<span class="kw">t</span> = a + b + c
+<span class="kw">av</span> = t / <span class="num">3</span>                              <span class="com"># magic number 3</span>
+<span class="bif">print</span>(<span class="str">"Average: "</span> + <span class="bif">str</span>(<span class="bif">round</span>(av, <span class="num">2</span>)))
+<span class="kw">if</span> av &lt; <span class="num">35</span>: ...                        <span class="com"># magic numbers 35, 75</span>
+
+<span class="com"># student 2  ← the SAME block, copy-pasted</span>
+<span class="kw">n</span> = <span class="str">"Diya"</span>; <span class="kw">a</span> = <span class="num">30</span>; <span class="kw">b</span> = <span class="num">28</span>; <span class="kw">c</span> = <span class="num">33</span>
+<span class="com"># ... and again for student 3 (repetition!)</span></code></pre>
+    </div>
+  </section>
+
+  <!-- ═══════ SLIDE 6 · THE RECIPE ═══════ -->
+  <section class="slide">
+    <div class="r eyebrow" style="--d:0;">&gt;&gt; 02 / 04 · The cure</div>
+    <h2 class="r h-title" style="--d:1; font-size:42px; margin-top:8px;">The refactor recipe</h2>
+
+    <ol class="r num-list" style="--d:2; margin-top:26px; max-width:84ch;">
+      <li><b style="color:var(--text-br);">Extract a function</b> — take the repeated block and wrap it in <code style="font-family:var(--mono);color:var(--cyan);">def</code>.</li>
+      <li><b style="color:var(--text-br);">Name it well</b> — the parts that change become parameters: <code style="font-family:var(--mono);color:var(--yellow);">print_report(name, m1, m2, m3)</code>.</li>
+      <li><b style="color:var(--text-br);">Replace repetition with a call</b> — delete the copies, call the function instead.</li>
+      <li><b style="color:var(--text-br);">Name the magic numbers</b> — <code style="font-family:var(--mono);color:var(--purple);">PASS_MARK = 35</code> once, used everywhere.</li>
+      <li><b style="color:var(--text-br);">Re-run &amp; compare</b> — output must be identical. If it changed, you broke something.</li>
+    </ol>
+
+    <div class="r footer callout" style="--d:3;">
+      <b>Golden rule.</b> Refactor in <b>tiny steps</b>. Change one thing → run → check output still matches → repeat.
+    </div>
+  </section>
+
+  <!-- ═══════ SLIDE 7 · BEFORE/AFTER ═══════ -->
+  <section class="slide">
+    <div class="r eyebrow" style="--d:0;">&gt;&gt; Worked example · extract a function</div>
+    <h2 class="r h-title" style="--d:1; font-size:34px; margin-top:8px;">Before &rarr; After</h2>
+
+    <div class="grid-2" style="margin-top:22px; flex:1; min-height:0;">
+      <div class="r code" style="--d:2;">
+        <div class="cbar"><span class="cd"></span><span class="cd"></span><span class="cd"></span><span class="cf">before.py</span></div>
+<pre class="cpre"><code><span class="com"># copy-pasted 3 times</span>
+<span class="kw">n</span> = <span class="str">"Aarav"</span>
+<span class="kw">a</span> = <span class="num">40</span>; <span class="kw">b</span> = <span class="num">55</span>; <span class="kw">c</span> = <span class="num">70</span>
+<span class="kw">t</span> = a + b + c
+<span class="kw">av</span> = t / <span class="num">3</span>
+<span class="bif">print</span>(<span class="str">"Name: "</span> + n)
+<span class="bif">print</span>(<span class="str">"Average: "</span> + <span class="bif">str</span>(<span class="bif">round</span>(av, <span class="num">2</span>)))
+<span class="com"># ...then ALL of it again, twice</span></code></pre>
+      </div>
+      <div class="r code" style="--d:3;">
+        <div class="cbar"><span class="cd"></span><span class="cd"></span><span class="cd"></span><span class="cf">after.py</span></div>
+<pre class="cpre"><code><span class="kw">SUBJECTS</span> = <span class="num">3</span>
+
+<span class="kw">def</span> <span class="bif">print_report</span>(name, m1, m2, m3):
+    <span class="kw">total</span> = m1 + m2 + m3
+    <span class="kw">average</span> = total / SUBJECTS
+    <span class="bif">print</span>(<span class="str">"Name: "</span> + name)
+    <span class="bif">print</span>(<span class="str">"Average: "</span> + <span class="bif">str</span>(<span class="bif">round</span>(average, <span class="num">2</span>)))
+
+<span class="bif">print_report</span>(<span class="str">"Aarav"</span>, <span class="num">40</span>, <span class="num">55</span>, <span class="num">70</span>)</code></pre>
+      </div>
+    </div>
+    <div class="r footer" style="--d:4; margin-top:16px; font-size:15px; color:var(--muted);">
+      Same printed output. The logic lives in <b style="color:var(--text);">one</b> place now — fix a bug once, it's fixed for everyone.
+    </div>
+  </section>
+
+  <!-- ═══════ SLIDE 8 · WHY IT'S SAFE ═══════ -->
+  <section class="slide">
+    <div class="r eyebrow" style="--d:0;">&gt;&gt; 03 / 04 · Why this is safe</div>
+    <h2 class="r h-title" style="--d:1; font-size:38px; margin-top:8px;">Same output = you didn't break it</h2>
+    <p class="r body-text" style="--d:2; margin-top:16px;">
+      Refactoring feels risky, but it has a built-in safety net: the program's output is your
+      <em style="color:var(--cyan);font-style:normal;">test</em>. Capture the output <b style="color:var(--text-br);">before</b> you start.
+      After every small change, run it and compare.
+    </p>
+
+    <div class="r code" style="--d:3; margin-top:22px; max-width:820px;">
+      <div class="cbar"><span class="cd"></span><span class="cd"></span><span class="cd"></span><span class="cf">the_safety_loop.txt</span></div>
+<pre class="cpre"><code><span class="com"># 1. run the messy version, save the output  (your target)</span>
+<span class="com"># 2. make ONE small change</span>
+<span class="com"># 3. run again — does the output still match?</span>
+<span class="com">#       same  → keep going</span>
+<span class="com">#       diff  → undo that last change, you broke behaviour</span></code></pre>
+    </div>
+    <div class="r footer callout" style="--d:4;">
+      <b>If the output changed, it isn't a refactor any more</b> — it's a (probably accidental) feature change.
+    </div>
+  </section>
+
+  <!-- ═══════ SLIDE 9 · COMMON MISTAKES ═══════ -->
+  <section class="slide">
+    <div class="r eyebrow" style="--d:0;">&gt;&gt; 04 / 04 · Common failures</div>
+    <h2 class="r h-title" style="--d:1; font-size:42px; margin-top:8px;">Two ways refactoring goes wrong</h2>
+
+    <div class="grid-2" style="margin-top:30px;">
+      <div class="r card accent" style="--d:2; padding:24px;">
+        <div class="pill" style="background:rgba(248,113,113,.14);color:var(--red);">MISTAKE 1</div>
+        <div style="font-family:var(--disp); font-size:22px; font-weight:600; color:var(--text-br); margin-top:14px;">Changing behaviour</div>
+        <p style="color:var(--muted); margin-top:12px; font-size:15px; line-height:1.55;">
+          "While I'm here, let me fix the formatting to <code style="font-family:var(--mono);color:var(--green);">55.00</code>…" — and now the output differs.
+          That's a separate task. Today: keep output <b style="color:var(--text);">byte-for-byte identical</b>.
+        </p>
+      </div>
+      <div class="r card accent" style="--d:3; padding:24px;">
+        <div class="pill" style="background:rgba(248,113,113,.14);color:var(--red);">MISTAKE 2</div>
+        <div style="font-family:var(--disp); font-size:22px; font-weight:600; color:var(--text-br); margin-top:14px;">Over-engineering</div>
+        <p style="color:var(--muted); margin-top:12px; font-size:15px; line-height:1.55;">
+          Don't add five layers of helpers for three students. One well-named function is enough.
+          Clean &ne; clever. Stop when it reads clearly.
+        </p>
+      </div>
+    </div>
+
+    <div class="r footer callout" style="--d:4;">
+      <b>Aim for the middle.</b> Remove the smell, then stop. Resist both "leave it messy" and "rebuild the universe".
+    </div>
+  </section>
+
+  <!-- ═══════ SLIDE 10 · LAB PREVIEW ═══════ -->
+  <section class="slide">
+    <div class="r eyebrow" style="--d:0;">&gt;&gt; 11:00 – 12:00 · Lab</div>
+    <h2 class="r h-title" style="--d:1; font-size:42px; margin-top:8px;">Today's lab — Clean the Spaghetti</h2>
+
+    <div class="grid-2" style="margin-top:30px;">
+      <div class="r card" style="--d:2; padding:24px;">
+        <div class="pill">THE STARTER</div>
+        <div style="font-family:var(--disp); font-size:24px; font-weight:600; color:var(--text-br); margin-top:14px;">A working report card</div>
+        <p style="color:var(--muted); margin-top:12px; font-size:15px; line-height:1.55;">
+          <code style="font-family:var(--mono);color:var(--yellow);">starter.py</code> prints a report for three students — correctly — but the same block is copy-pasted three times, with magic numbers and one-letter names.
+        </p>
+      </div>
+      <div class="r card" style="--d:3; padding:24px;">
+        <div class="pill">YOUR JOB</div>
+        <div style="font-family:var(--disp); font-size:24px; font-weight:600; color:var(--text-br); margin-top:14px;">Refactor, don't rewrite</div>
+        <p style="color:var(--muted); margin-top:12px; font-size:15px; line-height:1.55;">
+          Extract <code style="font-family:var(--mono);color:var(--yellow);">print_report(...)</code>, name the constants, call it three times. Follow the <code style="font-family:var(--mono);color:var(--green);"># TODO:</code> markers. Output must stay identical.
+        </p>
+      </div>
+    </div>
+
+    <div class="r footer callout" style="--d:4;">
+      <b>How to submit.</b> In your fork, create <code style="font-family:var(--mono);color:var(--yellow);">students/&lt;your-username&gt;/D14_refactor_spaghetti.py</code>. Full brief in <code style="font-family:var(--mono);color:var(--cyan);">lab/module_1_foundations/D14_refactor_spaghetti/problem.md</code>. PR before 12:00. ★ Stretch: drive the reports from a list with a loop.
+    </div>
+  </section>
+
+  <!-- ═══════ SLIDE 11 · WHAT YOU CAN NOW DO ═══════ -->
+  <section class="slide" style="justify-content:center; padding:64px 80px;">
+    <div class="r eyebrow" style="--d:0;">&gt;&gt; End of Day 14</div>
+    <h2 class="r h-title" style="--d:1; font-size:54px; margin-top:8px;">What you can now do</h2>
+
+    <ul style="list-style:none; padding:0; margin-top:36px; max-width:80ch;">
+      <li class="r" style="--d:2; padding:12px 0; font-size:20px; color:var(--text); border-bottom:1px solid var(--border);">
+        <span style="color:var(--cyan); font-family:var(--mono); font-size:14px; margin-right:14px;">✓</span>
+        Spot the four smells: repetition, long blocks, unclear names, magic numbers.
+      </li>
+      <li class="r" style="--d:3; padding:12px 0; font-size:20px; color:var(--text); border-bottom:1px solid var(--border);">
+        <span style="color:var(--cyan); font-family:var(--mono); font-size:14px; margin-right:14px;">✓</span>
+        Extract a well-named function and replace copy-paste with a call.
+      </li>
+      <li class="r" style="--d:4; padding:12px 0; font-size:20px; color:var(--text);">
+        <span style="color:var(--cyan); font-family:var(--mono); font-size:14px; margin-right:14px;">✓</span>
+        Refactor safely — improve the shape while keeping the output identical.
+      </li>
+    </ul>
+
+    <div class="r footer" style="--d:5; display:flex; align-items:center; gap:14px; font-size:15px; color:var(--muted);">
+      <span class="pill">UP NEXT</span>
+      <span>Friday mini-project — <b style="color:var(--text-br);">Simple Calculator</b> on <b style="color:var(--text-br);">Day 15</b>.</span>
+    </div>
+  </section>
+
+</div>
+</div>
+
+<div class="hud">
+  <button id="prev" title="Previous (←)">&#x2039;</button>
+  <span class="count"><b id="cur">01</b> / <span id="total">11</span></span>
+  <button id="next" title="Next (→)">&#x203A;</button>
+  <span class="sep"></span>
+  <button id="fs" title="Fullscreen (F)">⛶</button>
+</div>
+<div class="hint"><b>←/→</b> navigate &nbsp; <b>F</b> fullscreen &nbsp; <b>Ctrl/⌘+P</b> save as PDF</div>
+
+<script>
+/* ───────── navigation ───────── */
+const slides = [...document.querySelectorAll(".slide")];
+const total  = slides.length;
+let cur = 0;
+document.getElementById("total").textContent = String(total).padStart(2,"0");
+
+function show(i){
+  cur = Math.max(0, Math.min(total-1, i));
+  slides.forEach((s,n) => s.classList.toggle("active", n===cur));
+  document.getElementById("cur").textContent = String(cur+1).padStart(2,"0");
+  document.getElementById("progress").style.width = ((cur+1)/total*100)+"%";
+  location.hash = cur+1;
+}
+const next = () => show(cur+1);
+const prev = () => show(cur-1);
+
+document.addEventListener("keydown", e => {
+  if (["ArrowRight"," ","PageDown","Enter"].includes(e.key)) { e.preventDefault(); next(); }
+  else if (["ArrowLeft","PageUp","Backspace"].includes(e.key)) { e.preventDefault(); prev(); }
+  else if (e.key === "Home") show(0);
+  else if (e.key === "End")  show(total-1);
+  else if (e.key.toLowerCase() === "f") toggleFs();
+});
+document.getElementById("next").onclick = next;
+document.getElementById("prev").onclick = prev;
+document.getElementById("fs").onclick   = toggleFs;
+
+function toggleFs(){
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+  else document.exitFullscreen?.();
+}
+
+/* ───────── fit stage to viewport ───────── */
+const scaler = document.getElementById("scaler");
+function fit(){
+  const sc = Math.min(window.innerWidth/1280, window.innerHeight/720);
+  scaler.style.transform = `scale(${sc})`;
+}
+window.addEventListener("resize", fit);
+fit();
+
+/* fade the keyboard hint after a few seconds */
+setTimeout(() => document.querySelector(".hint")?.classList.add("gone"), 6000);
+
+/* deep-link via hash (also handles browser back/forward) */
+window.addEventListener("hashchange", () => {
+  const n = parseInt(location.hash.replace("#","")) || 1;
+  if (n-1 !== cur) show(n-1);
+});
+const start = parseInt(location.hash.replace("#","")) || 1;
+show(start-1);
+</script>
+</body>
+</html>

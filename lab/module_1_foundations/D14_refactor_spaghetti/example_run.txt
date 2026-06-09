@@ -1,0 +1,20 @@
+$ python3 D14_refactor_spaghetti.py
+===== REPORT CARD =====
+Name: Aarav
+Marks: 40, 55, 70
+Total: 165 / 300
+Average: 55.0
+Result: PASS
+-----------------------
+Name: Diya
+Marks: 30, 28, 33
+Total: 91 / 300
+Average: 30.33
+Result: FAIL
+-----------------------
+Name: Kabir
+Marks: 88, 91, 79
+Total: 258 / 300
+Average: 86.0
+Result: PASS (Distinction)
+-----------------------
