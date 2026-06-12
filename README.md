@@ -81,6 +81,7 @@ helping classmates, and tackling the optional ★ stretch problems. Faculty adds
 names here as the course runs.
 
 [Tanuja Karpe](students/tanuja-karpe)
+
 [Ayushka Mutadik](students/aayushka-mutdak/)
 
 
