@@ -82,4 +82,30 @@ names here as the course runs.
 
 [Tanuja Karpe](students/tanuja-karpe)
 
-[Ayushka Mutadik](students/aayushka-mutdak/)
+[Ayushka Mutdik](students/aayushka-mutdak/)
+
+[likhit Ranchod]()
+
+[Anjali Yadav]()
+
+[Sainath Bhor]()
+
+[Bhakti Punde]()
+
+[Piyushka Aher]()
+
+[Ishwari Mahaddev]()
+
+[Supriya Punde]()
+
+[Siddhika Dongre]()
+
+[Tanmay More]()
+
+[Sahebrao Khadke]()
+
+[Snehal Wakchaure]()
+
+[Mansi Awari]()
+
+[Chaitanya Kadam]()
